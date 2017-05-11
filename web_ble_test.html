@@ -1,0 +1,73 @@
+<html>
+<script>
+
+var _serv_uuid = '19B10010-E8F2-537E-4F6C-D104768A1214'.toLowerCase();
+var _char_uuid = '19B10011-E8F2-537E-4F6C-D104768A1214'.toLowerCase();
+
+var connected = false;
+var ledValue;
+var myCharacteristic;
+
+function log(v)
+{
+  console.log(v);
+}
+
+function _connect()
+{
+  log('Requesting any Bluetooth Device...');
+  navigator.bluetooth.requestDevice({
+   // filters: [...] <- Prefer filters to save energy & show relevant devices.
+      acceptAllDevices: true,
+      optionalServices: [_serv_uuid]
+      })
+  .then(device => {
+    log('Connecting to GATT Server...');
+    return device.gatt.connect();
+  })
+  .then(server => {
+    log('Getting Service...');
+    return server.getPrimaryService(_serv_uuid);
+  })
+  .then(service => {
+    log('Getting Characteristic...');
+    return service.getCharacteristic(_char_uuid);
+  })
+  .then(characteristic => {
+    log('Reading Characteristic values...');
+    myCharacteristic = characteristic;
+    return characteristic.readValue();
+  })
+  .then(value => {
+    log('Value is ' + value.getUint8(0));
+    connected = true;
+    ledValue = value.getUint8(0);
+  })
+  .catch(error => {
+    log(error); 
+  });
+}
+
+function _toggle() {
+  if(!connected)
+    return;
+
+  ledValue = ledValue == 0 ? 1 : 0;
+  // Writing 1 is the signal to reset energy expended.
+  var v = Uint8Array.of(ledValue);
+  myCharacteristic.writeValue(v)
+  .then(_ => {
+    log('toggle done, new value is ' + ledValue);
+  })
+  .catch(error => { 
+    log(error); 
+  });
+}
+</script>
+
+<body>
+<button onclick='_connect()'>Connect BLE devices</button>
+<br>
+<button onclick='_toggle()'>Toggle LED</button>
+</body>
+</html>
